@@ -1,5 +1,12 @@
-import { join } from 'node:path';
-import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
+import { join } from "node:path";
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  ipcMain,
+  globalShortcut,
+  Notification,
+} from "electron";
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -10,10 +17,10 @@ const createWindow = () => {
     maxHeight: 800,
     maxWidth: 450,
     maximizable: false,
-    titleBarStyle: 'hidden',
+    titleBarStyle: "hidden",
     titleBarOverlay: true,
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      preload: join(__dirname, "preload.js"),
     },
   });
 
@@ -25,30 +32,51 @@ const createWindow = () => {
     );
   }
 
-  mainWindow.webContents.openDevTools({ mode: 'detach' });
+  mainWindow.webContents.openDevTools({ mode: "detach" });
 
   return mainWindow;
 };
 
-app.on('ready', createWindow);
+app.on("ready", () => {
+  const window = createWindow();
+  globalShortcut.register("CommandOrControl+Shift+Alt+C", () => {
+    app.focus();
+    window.show();
+    window.focus();
+  });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  globalShortcut.register("CommandOrControl+Shift+Alt+V", () => {
+    const content = clipboard.readText().toUpperCase();
+    clipboard.writeText(content);
+    new Notification({
+      title: "Capitilized clipboard",
+      subtitle: "Copied to clipboard",
+      body: content,
+    }).show();
+  });
+});
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-app.on('activate', () => {
+app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
 
-ipcMain.on('write-to-clipboard', (_, content: string) => {
-    console.log(content);
-    clipboard.writeText(content);
-})
+app.on("quit", () => {
+  globalShortcut.unregisterAll();
+});
 
-ipcMain.handle('read-from-clipboard', (_) => {
-    return clipboard.readText();
+ipcMain.on("write-to-clipboard", (_, content: string) => {
+  console.log(content);
+  clipboard.writeText(content);
+});
+
+ipcMain.handle("read-from-clipboard", (_) => {
+  return clipboard.readText();
 });
