@@ -9,6 +9,7 @@ import {
   Tray,
   Menu,
 } from "electron";
+import Positioner from "electron-positioner";
 
 let tray: Tray | null = null;
 
@@ -23,6 +24,7 @@ const createWindow = () => {
     maximizable: false,
     titleBarStyle: "hidden",
     titleBarOverlay: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
     },
@@ -36,27 +38,28 @@ const createWindow = () => {
     );
   }
 
-  mainWindow.webContents.openDevTools({ mode: "detach" });
-
   return mainWindow;
 };
 
 app.on("ready", () => {
   const window = createWindow();
 
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: "Show Window",
-      click() {
-        window.show();
-        window.focus();
-      },
-    },
-    { label: "Quit", role: "quit" },
-  ]);
   tray = new Tray("./src/icons/trayTemplate.png");
-  tray.setContextMenu(contextMenu);
-  tray.on("click", () => {});
+  tray.setIgnoreDoubleClickEvents(true);
+  const positioner = new Positioner(window);
+
+  tray.on("click", () => {
+    if (!tray) {
+      return;
+    }
+    if (window.isVisible()) {
+      return window.hide();
+    }
+    const trayPosition = positioner.calculate("trayCenter", tray.getBounds());
+    window.setPosition(trayPosition.x, trayPosition.y, false);
+    window.show();
+  });
+
   globalShortcut.register("CommandOrControl+Shift+Alt+C", () => {
     app.focus();
     window.show();
